@@ -1,0 +1,20 @@
+devices:
+  - name: MRAM0
+    type: MRAM_Device
+    capacity: 1073741824   # 1 GiB
+  - name: QLC_A
+    type: QLC_NAND_Device
+    capacity: 21474836480  # 20 GiB
+  - name: QLC_B
+    type: QLC_NAND_Device
+    capacity: 21474836480  # 20 GiB
+
+policies:
+  - data_tag: CRITICAL_METADATA
+    target: MRAM0
+    mode: RANDOM
+  - data_tag: SENSOR_LOGS
+    target: QLC_A
+    mode: ZNS_SEQ_WRITE
+
+
