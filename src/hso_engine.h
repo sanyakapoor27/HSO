@@ -8,33 +8,42 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 struct PolicyRule {
-    std::string dataTag;          // e.g., CRITICAL_METADATA
-    std::string targetDeviceName; // e.g., MRAM0, QLC_A
-    std::string mode;             // e.g., RANDOM, ZNS_SEQ_WRITE
+	std::string tag;
+	std::string targetDevice;
+	std::string mode; // "RANDOM" or "ZNS_SEQ_WRITE"
 };
 
 class HSO_Engine {
 public:
-    void registerDevice(std::shared_ptr<StorageDevice> dev);
+	HSO_Engine() = default;
 
-    // Load static policies from a YAML-like file (simple parser for MVD)
-    bool loadPoliciesFromFile(const std::string& path, std::string& errMsg);
+	// Load a simple YAML-like config file
+	bool loadConfig(const std::string &configPath, std::string &errorMessage);
 
-    // Route according to policies. Returns latency in microseconds measured externally.
-    void submit(const IORequest& req);
+	// Submit routed I/O based on tag using static policy (Phase 1)
+	uint64_t submitRoutedIO(const IORequest &req);
 
-    // Phase 2: dynamic routing for ARCHIVE_DATA with wear-aware selection among QLCs
-    void submitArchiveDynamic(const IORequest& req);
+	// Direct submit to a named device (baseline path)
+	uint64_t submitDirect(const std::string &deviceName, const IORequest &req);
 
-    std::shared_ptr<StorageDevice> getDevice(const std::string& name) const;
+	// Phase 2: wear-aware dynamic routing for ARCHIVE_DATA across QLC devices
+	uint64_t submitArchiveDynamic(const IORequest &req);
 
-    const std::unordered_map<std::string, std::shared_ptr<StorageDevice>>& devices() const { return devices_; }
+	// Accessors
+	std::shared_ptr<StorageDevice> getDevice(const std::string &name) const;
+	std::vector<std::shared_ptr<QLC_NAND_Device>> getQLCDevices() const;
 
 private:
-    std::unordered_map<std::string, std::shared_ptr<StorageDevice>> devices_;
-    std::unordered_map<std::string, PolicyRule> rulesByTag_;
-};
+	bool parseConfig(const std::string &text, std::string &errorMessage);
+	static std::string trim(const std::string &s);
+	static bool starts_with(const std::string &s, const std::string &p);
 
+private:
+	std::unordered_map<std::string, std::shared_ptr<StorageDevice>> devices_;
+	std::vector<PolicyRule> policies_;
+};
 
